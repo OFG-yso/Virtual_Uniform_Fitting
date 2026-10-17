@@ -158,6 +158,7 @@
 
   let index = 0;
   let scale = 1;
+  let ox = 0, oy = 0;           // ドラッグによる移動量（CSS px）
   let facing = 'environment';   // スマホはアウトカメラが既定
   let stream = null;
 
@@ -179,8 +180,8 @@
     img.style.width = b.w + 'px';
     img.style.height = b.h + 'px';
     // 画像上部中央（顔の位置）を固定点とし、そこを中心に拡縮
-    img.style.left = (W / 2 - b.w / 2) + 'px';
-    img.style.top = b.top + 'px';
+    img.style.left = (W / 2 + ox - b.w / 2) + 'px';
+    img.style.top = (b.top + oy) + 'px';
     img.style.transform = `scale(${scale})`;
     zoomInfo.textContent = scale.toFixed(1) + 'x';
   }
@@ -248,8 +249,16 @@
   });
   stage.addEventListener('pointermove', e => {
     if (!pointers.has(e.pointerId)) return;
+    const prev = pointers.get(e.pointerId);
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pointers.size === 2 && startDist > 0) setScale(startScale * dist() / startDist);
+    if (pointers.size === 2 && startDist > 0) {
+      setScale(startScale * dist() / startDist);
+    } else if (pointers.size === 1) {
+      // 1本指ドラッグで制服を移動
+      ox += e.clientX - prev.x;
+      oy += e.clientY - prev.y;
+      layout();
+    }
   });
   const up = e => { pointers.delete(e.pointerId); if (pointers.size < 2) startDist = 0; };
   stage.addEventListener('pointerup', up);
@@ -287,8 +296,8 @@
     if (img.style.display !== 'none' && img.naturalWidth) {
       const b = baseSize();
       const w = b.w * scale / k, h = b.h * scale / k;
-      const x = (W / 2) / k - w / 2;
-      const y = b.top / k;
+      const x = (W / 2 + ox) / k - w / 2;
+      const y = (b.top + oy) / k;
       ctx.drawImage(img, x, y, w, h);
     }
 
